@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拼好本5.1 · 合并标签明细+大字体预览</title>
-    <!-- mammoth.js 解析 .docx，Sortable 实现拖拽 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <title>拼好本5.2 · 优化合并处理</title>
+    <!-- 使用本地 mammoth.js 和 Sortable，避免 CDN 跟踪防护问题 -->
+    <script src="mammoth.browser.min.js"></script>
+    <script src="Sortable.min.js"></script>
     <style>
-        /* 基础重置 */
+        /* 此处省略样式，保持与原版一致，请复制之前的完整样式 */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -432,7 +432,7 @@
 
         /* 右侧操作台 */
         .right-panel {
-            width: 280px;  /* 稍微加宽以适应合并标签的换行 */
+            width: 280px;
             background: #ffffff;
             border-radius: 14px;
             border: 1px solid #e2ecf5;
@@ -470,7 +470,7 @@
         .order-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;  /* 增加间距以适应换行 */
+            gap: 8px;
             min-height: 100px;
         }
         .order-tag-item {
@@ -487,7 +487,7 @@
         .order-tag-item.merged {
             background: #f0f0ff;
             border-color: #a0a0e0;
-            flex-wrap: wrap;  /* 允许换行 */
+            flex-wrap: wrap;
         }
         .order-tag-item.merge-pending {
             border: 2px solid #4CAF50;
@@ -510,7 +510,7 @@
             white-space: nowrap;
         }
         .order-tag-item.merged .tag-name {
-            white-space: normal;  /* 合并标签允许换行 */
+            white-space: normal;
             word-break: break-word;
             line-height: 1.4;
         }
@@ -827,7 +827,7 @@
             padding: 16px;
             border: 1px solid #c0d6ee;
             border-radius: 14px;
-            font-size: 16px;  /* 从13px增大到16px */
+            font-size: 16px;
             line-height: 1.6;
             font-family: monospace;
             resize: vertical;
@@ -842,7 +842,7 @@
             justify-content: flex-end;
         }
         .preview-btn {
-            padding: 10px 26px;  /* 按钮稍微增大 */
+            padding: 10px 26px;
             border-radius: 20px;
             border: none;
             font-size: 14px;
@@ -992,7 +992,7 @@
 
     let toastTimeout = null;
     let promptCallback = null;
-    let previewCallback = null; // 预览窗口保存时的回调
+    let previewCallback = null;
 
     function showToast(text, duration = 3000) {
         if (!toastEl) return;
@@ -1043,7 +1043,6 @@
         }
     });
 
-    // 预览窗口关闭
     function closePreview() {
         previewOverlay.style.display = 'none';
         previewCallback = null;
@@ -1052,7 +1051,6 @@
     previewCloseBtn.onclick = closePreview;
     previewCancelBtn.onclick = closePreview;
 
-    // 预览窗口保存
     previewSaveBtn.onclick = () => {
         if (previewCallback) {
             const content = previewTextarea.value;
@@ -1061,7 +1059,6 @@
         closePreview();
     };
 
-    // 预览窗口导出
     previewExportBtn.onclick = () => {
         const content = previewTextarea.value;
         if (!content.trim()) {
@@ -1079,7 +1076,6 @@
         URL.revokeObjectURL(url);
     };
 
-    // 打开预览窗口
     function openPreview(title, initialContent, onSave) {
         previewTitle.textContent = title;
         previewTextarea.value = initialContent;
@@ -1087,7 +1083,6 @@
         previewOverlay.style.display = 'flex';
     }
 
-    // 防抖函数
     function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -1100,7 +1095,6 @@
         };
     }
 
-    // HTML转义
     function escapeHtml(unsafe) {
         return unsafe.replace(/[&<>"]/g, m => {
             if (m === '&') return '&amp;';
@@ -1111,7 +1105,6 @@
         });
     }
 
-    // 高亮关键词
     function highlightText(text, keyword) {
         if (!keyword) return escapeHtml(text);
         const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1126,7 +1119,6 @@
         return result;
     }
 
-    // 获取标签前缀
     function getTagPrefix(tag) {
         const hyphenIndex = tag.indexOf('-');
         return hyphenIndex === -1 ? tag : tag.substring(0, hyphenIndex);
@@ -1135,22 +1127,20 @@
     // ==================== 数据状态 ====================
     let products = [];
     let currentProduct = null;
-    const productData = new Map(); // product -> { labels, allTags, collapsed, orderList, savedScripts, mergedTags }
+    const productData = new Map();
 
     let currentLabels = {};
     let currentAllTags = [];
     let currentCollapsed = {};
     let currentOrderTags = [];
-    let currentSavedScripts = []; // 当前产品保存的脚本数组
-    let currentMergedTags = {};   // 当前产品的合并映射 { mergedName: [tag1, tag2] }
+    let currentSavedScripts = [];
+    let currentMergedTags = {};
 
     let searchKeyword = '';
     let dirSearchKeyword = '';
 
-    // 合并状态
-    let mergePendingTag = null; // 等待合并的标签名
+    let mergePendingTag = null;
 
-    // DOM 元素
     const productBarHeader = document.getElementById('productBarHeader');
     const tagsContainer = document.getElementById('tagsContainer');
     const dirListEl = document.getElementById('dirList');
@@ -1173,7 +1163,7 @@
 
     // ==================== IndexedDB 封装 ====================
     const DB_NAME = 'ScriptMergerDB';
-    const DB_VERSION = 4; // 升级版本以支持 mergedTags
+    const DB_VERSION = 5; // 升级版本，添加 content 索引
     const STORE_NAME = 'scripts';
 
     function openDB() {
@@ -1183,18 +1173,23 @@
             request.onsuccess = () => resolve(request.result);
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (db.objectStoreNames.contains(STORE_NAME)) {
-                    db.deleteObjectStore(STORE_NAME);
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('product', 'product', { unique: false });
+                    store.createIndex('tag', 'tag', { unique: false });
+                    store.createIndex('product_tag', ['product', 'tag'], { unique: false });
+                    store.createIndex('content', 'content', { unique: false }); // 新增 content 索引
+                } else {
+                    // 版本升级，添加 content 索引
+                    const store = event.target.transaction.objectStore(STORE_NAME);
+                    if (!store.indexNames.contains('content')) {
+                        store.createIndex('content', 'content', { unique: false });
+                    }
                 }
-                const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                store.createIndex('product', 'product', { unique: false });
-                store.createIndex('tag', 'tag', { unique: false });
-                store.createIndex('product_tag', ['product', 'tag'], { unique: false });
             };
         });
     }
 
-    // 读取所有数据
     async function loadAllFromDB() {
         const db = await openDB();
         return new Promise((resolve, reject) => {
@@ -1219,21 +1214,43 @@
         });
     }
 
-    // 批量保存
+    // 优化后的 saveEntries：去重并更新标签
     async function saveEntries(entries) {
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
+        const contentIndex = store.index('content');
+
         for (let { product, tag, content } of entries) {
-            store.add({ product, tag, content });
+            // 查找相同内容的所有记录
+            const existingRecords = await new Promise((resolve, reject) => {
+                const request = contentIndex.getAll(IDBKeyRange.only(content));
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+            // 过滤出相同产品的记录
+            const sameProduct = existingRecords.filter(r => r.product === product);
+            if (sameProduct.length > 0) {
+                // 存在相同内容且相同产品，检查标签是否一致
+                const existing = sameProduct[0];
+                if (existing.tag !== tag) {
+                    // 更新标签
+                    existing.tag = tag;
+                    store.put(existing);
+                }
+                // 如果有多个相同内容的记录（理论上不会发生，但以防万一，只处理第一个）
+            } else {
+                // 新增记录
+                store.add({ product, tag, content });
+            }
         }
+
         return new Promise((resolve, reject) => {
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
     }
 
-    // 删除某个产品的所有数据
     async function deleteProductData(product) {
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -1255,7 +1272,6 @@
         });
     }
 
-    // 清空所有数据
     async function clearAllDB() {
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -1267,7 +1283,6 @@
         });
     }
 
-    // 从数据库刷新内存数据 (不包含 savedScripts 和 mergedTags, 需要从 localStorage 额外加载)
     async function refreshFromDB() {
         const productMap = await loadAllFromDB();
         productData.clear();
@@ -1275,7 +1290,6 @@
         for (let [product, labelsObj] of productMap.entries()) {
             products.push(product);
             const tags = Object.keys(labelsObj);
-            // 分组排序
             const groups = {};
             tags.forEach(tag => {
                 const prefix = getTagPrefix(tag);
@@ -1291,24 +1305,18 @@
                 allTags.push(...groups[prefix]);
             });
 
-            // 从 localStorage 加载 savedScripts
             let savedScripts = [];
             try {
                 const saved = localStorage.getItem(`savedScripts_${product}`);
-                if (saved) {
-                    savedScripts = JSON.parse(saved);
-                }
+                if (saved) savedScripts = JSON.parse(saved);
             } catch (e) {
                 console.warn('加载保存脚本失败', e);
             }
 
-            // 从 localStorage 加载 mergedTags
             let mergedTags = {};
             try {
                 const merged = localStorage.getItem(`mergedTags_${product}`);
-                if (merged) {
-                    mergedTags = JSON.parse(merged);
-                }
+                if (merged) mergedTags = JSON.parse(merged);
             } catch (e) {
                 console.warn('加载合并标签失败', e);
             }
@@ -1322,7 +1330,6 @@
                 mergedTags: mergedTags
             });
         }
-        // 处理当前产品
         if (currentProduct && !products.includes(currentProduct)) {
             currentProduct = products.length > 0 ? products[0] : null;
         } else if (!currentProduct && products.length > 0) {
@@ -1341,7 +1348,6 @@
         }
     }
 
-    // 更新当前产品引用
     function updateCurrentProductData() {
         if (!currentProduct || !productData.has(currentProduct)) {
             currentLabels = {};
@@ -1361,26 +1367,21 @@
         currentMergedTags = data.mergedTags || {};
     }
 
-    // 保存当前顺序到数据
     function saveCurrentOrderToData() {
         if (!currentProduct) return;
         const data = productData.get(currentProduct);
-        if (data) {
-            data.orderList = [...currentOrderTags];
-        }
+        if (data) data.orderList = [...currentOrderTags];
     }
 
-    // 保存当前产品的脚本到 localStorage
     function saveScriptsToStorage() {
         if (!currentProduct) return;
         try {
             localStorage.setItem(`savedScripts_${currentProduct}`, JSON.stringify(currentSavedScripts));
         } catch (e) {
-            console.warn('保存脚本到localStorage失败', e);
+            console.warn('保存脚本失败', e);
         }
     }
 
-    // 保存合并映射到 localStorage
     function saveMergedTagsToStorage() {
         if (!currentProduct) return;
         try {
@@ -1390,7 +1391,6 @@
         }
     }
 
-    // 渲染顺序区（带合并标签明细）
     function renderOrderListFromData() {
         orderListEl.innerHTML = '';
         if (currentOrderTags.length === 0) {
@@ -1400,15 +1400,12 @@
                 const isMerged = currentMergedTags.hasOwnProperty(tag);
                 const orderItem = document.createElement('div');
                 orderItem.className = 'order-tag-item' + (isMerged ? ' merged' : '');
-                if (tag === mergePendingTag) {
-                    orderItem.classList.add('merge-pending');
-                }
+                if (tag === mergePendingTag) orderItem.classList.add('merge-pending');
                 orderItem.dataset.label = tag;
 
                 let displayName = '';
                 if (isMerged) {
                     const tags = currentMergedTags[tag];
-                    // 生成合并标签显示内容：合并名称 + 换行 + 包含的标签列表
                     const tagsList = tags.map(t => `#${escapeHtml(t)}#`).join(' ');
                     displayName = `<span class="tag-name">#${escapeHtml(tag)}#<span class="merged-list">包含: ${tagsList}</span></span>`;
                 } else {
@@ -1423,7 +1420,6 @@
                 `;
                 orderListEl.appendChild(orderItem);
             });
-            // 绑定按钮事件
             document.querySelectorAll('.order-remove-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1442,63 +1438,45 @@
             });
         }
         initOrderSortable();
-        // 清除等待合并状态（如果已取消）
         if (mergePendingTag && !currentOrderTags.includes(mergePendingTag)) {
             mergePendingTag = null;
         }
     }
 
-    // 合并按钮点击处理
     function handleMergeClick(tag) {
         if (mergePendingTag === null) {
-            // 第一次点击：进入等待合并状态
             mergePendingTag = tag;
-            renderOrderListFromData(); // 重新渲染以高亮
+            renderOrderListFromData();
         } else if (mergePendingTag === tag) {
-            // 点击同一个标签：取消合并
             mergePendingTag = null;
             renderOrderListFromData();
         } else {
-            // 点击另一个标签：执行合并
             const tagA = mergePendingTag;
             const tagB = tag;
-            // 确保两个标签都存在且不是同一个
             if (!currentOrderTags.includes(tagA) || !currentOrderTags.includes(tagB)) {
                 showToast('标签不存在');
                 mergePendingTag = null;
                 renderOrderListFromData();
                 return;
             }
-            // 生成合并标签名（按字母顺序排序以确保一致性）
             const sorted = [tagA, tagB].sort();
             const mergedName = sorted[0] + '+' + sorted[1];
             
-            // 检查是否已经存在该合并标签
             if (currentMergedTags[mergedName]) {
-                // 如果已存在，直接使用
-                // 从顺序区移除 tagA 和 tagB
                 currentOrderTags = currentOrderTags.filter(t => t !== tagA && t !== tagB);
-                // 如果合并标签不在顺序区，添加
-                if (!currentOrderTags.includes(mergedName)) {
-                    currentOrderTags.push(mergedName);
-                }
+                if (!currentOrderTags.includes(mergedName)) currentOrderTags.push(mergedName);
             } else {
-                // 创建新的合并标签
                 const sourceTags = [tagA, tagB];
                 currentMergedTags[mergedName] = sourceTags;
-                // 从顺序区移除 tagA 和 tagB
                 currentOrderTags = currentOrderTags.filter(t => t !== tagA && t !== tagB);
                 currentOrderTags.push(mergedName);
-                // 保存合并映射
                 saveMergedTagsToStorage();
             }
             
-            // 清除等待状态
             mergePendingTag = null;
-            // 更新数据并重新渲染
             saveCurrentOrderToData();
             renderOrderListFromData();
-            renderDirectory(); // 更新目录（目录中不会显示合并标签，但可能需要刷新）
+            renderDirectory();
             showToast(`已合并为“${mergedName}”`);
         }
     }
@@ -1507,9 +1485,6 @@
         const index = currentOrderTags.indexOf(tag);
         if (index !== -1) {
             currentOrderTags.splice(index, 1);
-            // 如果移除的是合并标签，可以选择保留合并映射（暂时不清除，避免数据丢失）
-            // 如果需要彻底清理，可以判断如果合并标签不在任何地方使用，则删除
-            // 为了简单，暂不清除映射
             saveCurrentOrderToData();
             renderOrderListFromData();
             renderDirectory();
@@ -1539,7 +1514,6 @@
         renderDirectory();
     }
 
-    // ==================== 渲染函数 ====================
     function renderProductBar() {
         let html = '';
         products.forEach(product => {
@@ -1586,7 +1560,7 @@
         searchInput.value = '';
         dirSearchKeyword = '';
         dirSearchInput.value = '';
-        mergePendingTag = null; // 清空合并等待状态
+        mergePendingTag = null;
         renderProductBar();
         renderLeft();
         renderDirectory();
@@ -1614,7 +1588,6 @@
         if (!products.includes(product)) return;
         showConfirm(`确定要删除产品“${product}”及其所有内容吗？`, async () => {
             await deleteProductData(product);
-            // 清除 localStorage 中的脚本和合并映射
             localStorage.removeItem(`savedScripts_${product}`);
             localStorage.removeItem(`mergedTags_${product}`);
             products = products.filter(p => p !== product);
@@ -1659,11 +1632,8 @@
         showToast(`产品“${product}”数据已清除`);
     }
 
-    // ==================== 优化后的设置菜单 ====================
     function showSettingsMenu(iconElement, product) {
-        // 移除已有的菜单
         document.querySelectorAll('.settings-menu').forEach(m => m.remove());
-
         const menu = document.createElement('div');
         menu.className = 'settings-menu';
         menu.innerHTML = `
@@ -1677,15 +1647,11 @@
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
 
-        // 计算菜单位置（默认右下弹出）
         let left = rect.left + window.scrollX;
         let top = rect.bottom + window.scrollY + 5;
-
-        // 如果菜单会超出右边界，则向左偏移
         if (left + menuWidth > window.innerWidth + window.scrollX) {
             left = rect.right + window.scrollX - menuWidth;
         }
-        // 如果菜单会超出下边界，则向上偏移
         if (top + menuHeight > window.innerHeight + window.scrollY) {
             top = rect.top + window.scrollY - menuHeight - 5;
         }
@@ -1709,7 +1675,6 @@
             }
         });
 
-        // 点击其他地方关闭
         setTimeout(() => {
             window.addEventListener('click', function handler(e) {
                 if (!menu.contains(e.target)) {
@@ -1720,7 +1685,6 @@
         }, 0);
     }
 
-    // 渲染左侧卡片
     function renderLeft() {
         if (!currentProduct || !currentLabels || Object.keys(currentLabels).length === 0) {
             tagsContainer.innerHTML = `<div class="empty-placeholder">请先选择产品并上传文档</div>`;
@@ -1771,9 +1735,7 @@
         const usedTags = new Set(currentOrderTags);
         const kw = dirSearchKeyword.trim().toLowerCase();
         let filteredTags = currentAllTags;
-        if (kw) {
-            filteredTags = currentAllTags.filter(tag => tag.toLowerCase().includes(kw));
-        }
+        if (kw) filteredTags = currentAllTags.filter(tag => tag.toLowerCase().includes(kw));
 
         if (filteredTags.length === 0) {
             dirListEl.innerHTML = `<div class="empty-placeholder">无匹配标签</div>`;
@@ -1799,9 +1761,7 @@
             el.addEventListener('click', () => {
                 searchInput.value = '';
                 searchKeyword = '';
-                if (currentCollapsed[tag]) {
-                    currentCollapsed[tag] = false;
-                }
+                if (currentCollapsed[tag]) currentCollapsed[tag] = false;
                 renderLeft();
                 setTimeout(() => {
                     document.getElementById(`card-${tag}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1835,7 +1795,6 @@
         });
     }
 
-    // ==================== 文档解析与上传 ====================
     function parseWordText(text) {
         const lines = text.split(/\r?\n/);
         const entries = [];
@@ -1909,7 +1868,6 @@
         window.__uploadForProduct = null;
     });
 
-    // ==================== 导入导出 ====================
     async function handleImportFile(file) {
         if (!file) return;
         if (!file.name.toLowerCase().endsWith('.json')) {
@@ -1939,11 +1897,9 @@
                             }
                         }
                     }
-                    // 恢复 savedScripts
                     if (prod.savedScripts) {
                         localStorage.setItem(`savedScripts_${productName}`, JSON.stringify(prod.savedScripts));
                     }
-                    // 恢复 mergedTags
                     if (prod.mergedTags) {
                         localStorage.setItem(`mergedTags_${productName}`, JSON.stringify(prod.mergedTags));
                     }
@@ -2002,7 +1958,6 @@
     async function handleClearAll() {
         showConfirm('确定要清空所有产品及其数据吗？此操作不可恢复。', async () => {
             await clearAllDB();
-            // 清除所有产品的 localStorage
             for (let product of products) {
                 localStorage.removeItem(`savedScripts_${product}`);
                 localStorage.removeItem(`mergedTags_${product}`);
@@ -2024,17 +1979,13 @@
         });
     }
 
-    // ==================== 生成脚本 ====================
     function generateAndExport() {
         if (!currentProduct || currentOrderTags.length === 0) {
             showToast('请先选择产品并在顺序区添加标签');
             return;
         }
-
-        // 检查所有标签（包括合并标签内的原始标签）是否有文案
         for (let tag of currentOrderTags) {
             if (currentMergedTags[tag]) {
-                // 合并标签：检查其包含的所有原始标签
                 const sourceTags = currentMergedTags[tag];
                 for (let srcTag of sourceTags) {
                     if (!currentLabels[srcTag] || currentLabels[srcTag].length === 0) {
@@ -2065,7 +2016,6 @@
             attempts++;
             const parts = currentOrderTags.map(tag => {
                 if (currentMergedTags[tag]) {
-                    // 合并标签：从所有源标签收集文案，去重后随机抽取
                     const sourceTags = currentMergedTags[tag];
                     let allContents = [];
                     sourceTags.forEach(srcTag => {
@@ -2073,12 +2023,10 @@
                             allContents = allContents.concat(currentLabels[srcTag]);
                         }
                     });
-                    // 去重
                     const uniqueContents = [...new Set(allContents)];
                     if (uniqueContents.length === 0) return '';
                     return uniqueContents[Math.floor(Math.random() * uniqueContents.length)];
                 } else {
-                    // 普通标签
                     const arr = currentLabels[tag];
                     return arr[Math.floor(Math.random() * arr.length)];
                 }
@@ -2099,7 +2047,6 @@
             showToast(`只能生成 ${scripts.length} 条不重复的脚本，已达到组合上限。`);
         }
 
-        // 打开预览窗口，传入新生成的脚本，保存时追加到现有脚本（去重）
         const newScripts = scripts;
         const existingScripts = currentSavedScripts;
         const initialContent = newScripts.join('\n\n');
@@ -2117,7 +2064,6 @@
         });
     }
 
-    // 查看已保存的脚本
     function viewSavedScripts() {
         if (!currentProduct) {
             showToast('请先选择产品');
@@ -2136,7 +2082,6 @@
         });
     }
 
-    // ==================== 搜索优化（防抖） ====================
     const debouncedRenderLeft = debounce(renderLeft, 250);
     const debouncedRenderDirectory = debounce(renderDirectory, 250);
 
@@ -2159,7 +2104,6 @@
         renderDirectory();
     }
 
-    // ==================== 事件绑定 ====================
     clearOrderBtn.addEventListener('click', clearOrder);
     generateBtn.addEventListener('click', generateAndExport);
     viewScriptsBtn.addEventListener('click', viewSavedScripts);
@@ -2170,7 +2114,6 @@
     dirSearchInput.addEventListener('input', handleDirSearch);
     clearDirSearchBtn.addEventListener('click', clearDirSearch);
 
-    // ==================== 初始化 ====================
     (async () => {
         await refreshFromDB();
         renderProductBar();
